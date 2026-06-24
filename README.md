@@ -21,7 +21,9 @@ This folder contains a PowerShell starter kit for standing up an Entra tenant wi
 - `Scripts/06-Create-NamedLocations.ps1` creates trusted IP named locations
 - `Scripts/07-Create-ConditionalAccessPolicies.ps1` creates baseline Conditional Access policies
 - `Scripts/08-Validate-BreakGlass.ps1` validates break-glass membership
+- `Scripts/10-Configure-DirectoryRoles.ps1` assigns directory roles to groups/users
 - `Scripts/09-ExportRoleAssignments.ps1` exports directory role inventory
+- `Scripts/11-Review-PrivilegedGroups.ps1` prints privileged group memberships
 - `Scripts/Invoke-EntraHardening.ps1` runs the hardening layer
 
 ## Getting started
@@ -41,6 +43,7 @@ This folder contains a PowerShell starter kit for standing up an Entra tenant wi
 - The automation app creation step uses the public certificate file so you do not need to hand-edit the app registration afterward.
 - The inventory export writes JSON and CSV files into `Output`.
 - Conditional Access policies default to `enabledForReportingButNotEnforced` so you can review impact before enforcement.
+- Directory roles can be delegated to groups using `directoryRoleAssignments` in the config file.
 
 ## Suggested next additions
 
