@@ -1,0 +1,88 @@
+{
+  "tenantId": "<TENANT_ID>",
+  "clientId": "<APPLICATION_CLIENT_ID>",
+  "certificateThumbprint": "<CERT_THUMBPRINT_IN_CURRENTUSER_OR_LOCALMACHINE_STORE>",
+  "certificatePath": "",
+  "certificatePassword": "",
+  "organizationName": "Contoso",
+  "licenseTier": "free",
+  "automationAppDisplayName": "Contoso Entra Automation",
+  "automationCertDisplayName": "Contoso Entra Automation Cert",
+  "automationCertPath": "",
+  "automationCertEndDate": "2028-12-31T23:59:59Z",
+  "graphApplicationPermissions": [
+    "Application.ReadWrite.All",
+    "AdministrativeUnit.ReadWrite.All",
+    "AppRoleAssignment.ReadWrite.All",
+    "Directory.Read.All",
+    "Policy.Read.All",
+    "Policy.ReadWrite.ConditionalAccess",
+    "Group.ReadWrite.All",
+    "RoleManagement.ReadWrite.Directory",
+    "User.Read.All"
+  ],
+  "trustedIpRanges": [
+    "203.0.113.10/32",
+    "203.0.113.11/32"
+  ],
+  "breakGlassAccounts": [
+    "breakglass1@contoso.com",
+    "breakglass2@contoso.com"
+  ],
+  "directoryRoleAssignments": [
+    {
+      "roleDisplayName": "Helpdesk Administrator",
+      "principalUserPrincipalName": "admin1@contoso.com",
+      "directoryScopeId": "/"
+    },
+    {
+      "roleDisplayName": "User Administrator",
+      "principalUserPrincipalName": "admin1@contoso.com",
+      "directoryScopeId": "/"
+    },
+    {
+      "roleDisplayName": "Security Reader",
+      "principalUserPrincipalName": "admin1@contoso.com",
+      "directoryScopeId": "/"
+    }
+  ],
+  "conditionalAccess": {
+    "trustedLocationDisplayName": "NL-Trusted-Corporate-IPs",
+    "blockLegacyAuthPolicyDisplayName": "CA - Block Legacy Authentication",
+    "requireMfaPolicyDisplayName": "CA - Require MFA for All Users",
+    "defaultState": "enabledForReportingButNotEnforced"
+  },
+  "baselineGroups": [
+    {
+      "displayName": "SG-ENTRA-Global-Admins",
+      "description": "Privileged administrators",
+      "mailNickname": "sgentra-global-admins",
+      "securityEnabled": true
+    },
+    {
+      "displayName": "SG-ENTRA-BreakGlass",
+      "description": "Emergency access accounts and exclusions",
+      "mailNickname": "sgentra-breakglass",
+      "securityEnabled": true
+    },
+    {
+      "displayName": "SG-ENTRA-Helpdesk",
+      "description": "Helpdesk and password reset operators",
+      "mailNickname": "sgentra-helpdesk",
+      "securityEnabled": true
+    },
+    {
+      "displayName": "SG-ENTRA-ConditionalAccess-Exclusions",
+      "description": "Accounts excluded from selected Conditional Access policies",
+      "mailNickname": "sgentra-ca-exclusions",
+      "securityEnabled": true
+    }
+  ],
+  "administrativeUnits": [
+    {
+      "displayName": "AU-Administration",
+      "description": "Administrative unit for delegated admin testing and scoping"
+    }
+  ],
+  "reportOutputPath": ".\\Output"
+}
