@@ -22,6 +22,81 @@ function Get-EntraBootstrapConfig {
     return $raw | ConvertFrom-Json
 }
 
+function Get-OptionalObjectPropertyValue {
+    param(
+        [Parameter(Mandatory)]
+        [object]$Object,
+
+        [Parameter(Mandatory)]
+        [string]$PropertyName
+    )
+
+    if (-not $Object -or -not $Object.PSObject -or -not $Object.PSObject.Properties) {
+        return $null
+    }
+
+    $property = $Object.PSObject.Properties[$PropertyName]
+    if (-not $property) {
+        return $null
+    }
+
+    $value = $property.Value
+    if ($null -eq $value) {
+        return $null
+    }
+
+    if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+        return $null
+    }
+
+    return $value
+}
+
+function Get-EntraBootstrapLicenseTier {
+    param(
+        [Parameter(Mandatory)]
+        [object]$Config
+    )
+
+    $candidate = Get-OptionalObjectPropertyValue -Object $Config -PropertyName "licenseTier"
+    if (-not $candidate) {
+        return "free"
+    }
+
+    switch ((([string]$candidate).ToLowerInvariant())) {
+        "free" { return "free" }
+        "p1" { return "p1" }
+        "p2" { return "p2" }
+        default { return "free" }
+    }
+}
+
+function Get-EntraBootstrapCapabilities {
+    param(
+        [Parameter(Mandatory)]
+        [string]$LicenseTier
+    )
+
+    $tier = $LicenseTier.ToLowerInvariant()
+    return [pscustomobject]@{
+        LicenseTier                  = $tier
+        SupportsConditionalAccess    = ($tier -in @("p1", "p2"))
+        SupportsRoleAssignableGroups = ($tier -in @("p1", "p2"))
+    }
+}
+
+function Write-EntraBootstrapTierSummary {
+    param(
+        [Parameter(Mandatory)]
+        [string]$LicenseTier
+    )
+
+    $capabilities = Get-EntraBootstrapCapabilities -LicenseTier $LicenseTier
+    Write-Host ("License tier: {0}" -f $capabilities.LicenseTier)
+    Write-Host ("Conditional Access: {0}" -f $(if ($capabilities.SupportsConditionalAccess) { "enabled" } else { "skipped" }))
+    Write-Host ("Role-assignable groups: {0}" -f $(if ($capabilities.SupportsRoleAssignableGroups) { "enabled" } else { "skipped" }))
+}
+
 function Assert-Module {
     param(
         [Parameter(Mandatory)]
@@ -33,6 +108,7 @@ function Assert-Module {
     if (-not $module) {
         throw "Required module not found: $Name"
     }
+
     if ($MinimumVersion -and ([version]$module.Version -lt [version]$MinimumVersion)) {
         throw "Module $Name is installed, but version $($module.Version) is older than required $MinimumVersion"
     }
@@ -52,12 +128,14 @@ function Ensure-Module {
         if (-not $InstallMissing) {
             throw "Module not found: $Name. Re-run with -InstallMissing or install it manually."
         }
+
         Install-Module -Name $Name -Scope $Scope -Force -AllowClobber
     }
     elseif ($MinimumVersion -and ([version]$module.Version -lt [version]$MinimumVersion)) {
         if (-not $InstallMissing) {
             throw "Module $Name is too old ($($module.Version)); need $MinimumVersion or newer."
         }
+
         Install-Module -Name $Name -Scope $Scope -Force -AllowClobber -MinimumVersion $MinimumVersion
     }
 }
@@ -102,7 +180,7 @@ function Connect-EntraGraphWithCertificate {
         }
 
         $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet -bor
-                 [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet
 
         $certificate = if ($securePassword) {
             [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($CertificatePath, $securePassword, $flags)
@@ -134,6 +212,7 @@ function Invoke-GraphRequestJson {
         Method = $Method
         Uri    = $Uri
     }
+
     if ($PSBoundParameters.ContainsKey("Body") -and $null -ne $Body) {
         $params.Body = ($Body | ConvertTo-Json -Depth 20)
         $params.ContentType = "application/json"
@@ -152,20 +231,37 @@ function Get-GraphCollectionAll {
     $next = $Uri
     while ($next) {
         $response = Invoke-MgGraphRequest -Method GET -Uri $next
-        if ($response.value) {
+        if ($response -is [System.Array]) {
+            foreach ($entry in $response) {
+                [void]$items.Add($entry)
+            }
+        }
+        elseif ($response.value) {
             foreach ($entry in $response.value) {
                 [void]$items.Add($entry)
             }
         }
-        $next = $response.'@odata.nextLink'
+
+        $nextLinkProp = $null
+        if ($response -and $response.PSObject -and $response.PSObject.Properties) {
+            $nextLinkProp = $response.PSObject.Properties['@odata.nextLink']
+        }
+
+        if ($nextLinkProp) {
+            $next = $nextLinkProp.Value
+        }
+        else {
+            $next = $null
+        }
     }
+
     return $items
 }
 
 function Ensure-GraphObjectByDisplayName {
     param(
         [Parameter(Mandatory)]
-        [ValidateSet("groups", "directory/administrativeUnits")]
+        [ValidateSet("groups", "directory/administrativeUnits", "identity/conditionalAccess/namedLocations", "identity/conditionalAccess/policies")]
         [string]$Collection,
 
         [Parameter(Mandatory)]
@@ -179,7 +275,7 @@ function Ensure-GraphObjectByDisplayName {
 
     $safeName = $DisplayName.Replace("'", "''")
     $filter = [uri]::EscapeDataString("$FilterProperty eq '$safeName'")
-    $uri = "/v1.0/$Collection?`$filter=$filter"
+    $uri = "/v1.0/${Collection}?`$filter=$filter"
     $existing = Invoke-GraphRequestJson -Method GET -Uri $uri
     if ($existing.value -and $existing.value.Count -gt 0) {
         return $existing.value[0]
@@ -187,6 +283,28 @@ function Ensure-GraphObjectByDisplayName {
 
     $body = & $CreateBodyFactory
     return Invoke-GraphRequestJson -Method POST -Uri "/v1.0/$Collection" -Body $body
+}
+
+function Get-GraphObjectByDisplayName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Collection,
+
+        [Parameter(Mandatory)]
+        [string]$DisplayName,
+
+        [string]$FilterProperty = "displayName"
+    )
+
+    $safeName = $DisplayName.Replace("'", "''")
+    $filter = [uri]::EscapeDataString("$FilterProperty eq '$safeName'")
+    $uri = "/v1.0/${Collection}?`$filter=$filter"
+    $response = Invoke-GraphRequestJson -Method GET -Uri $uri
+    if ($response.value -and $response.value.Count -gt 0) {
+        return $response.value[0]
+    }
+
+    return $null
 }
 
 function Ensure-OutputDirectory {
@@ -198,5 +316,43 @@ function Ensure-OutputDirectory {
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Path $Path | Out-Null
     }
+
     return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Write-EntraBootstrapRunSummary {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ConfigPath,
+
+        [Parameter(Mandatory)]
+        [string]$LicenseTier,
+
+        [Parameter(Mandatory)]
+        [bool]$RanConditionalAccess,
+
+        [Parameter(Mandatory)]
+        [bool]$RanRoleAssignableGroups,
+
+        [Parameter(Mandatory)]
+        [bool]$RanDirectoryRoles
+    )
+
+    $config = Get-EntraBootstrapConfig -Path $ConfigPath
+    $root = Get-EntraBootstrapRoot
+    $outputPath = Ensure-OutputDirectory -Path (Join-Path $root $config.reportOutputPath)
+    $summary = [pscustomobject]@{
+        timestampUtc             = (Get-Date).ToUniversalTime().ToString("o")
+        configPath               = $ConfigPath
+        tenantId                 = $config.tenantId
+        automationAppDisplayName = $config.automationAppDisplayName
+        licenseTier              = $LicenseTier
+        ranConditionalAccess     = $RanConditionalAccess
+        ranRoleAssignableGroups  = $RanRoleAssignableGroups
+        ranDirectoryRoles        = $RanDirectoryRoles
+    }
+
+    $summaryPath = Join-Path $outputPath "hardening-summary.json"
+    $summary | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath
+    return $summary
 }

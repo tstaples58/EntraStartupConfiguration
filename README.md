@@ -1,61 +1,53 @@
-# Entra Bootstrap Toolkit
+# EntraStartupConfiguration
 
-This folder contains a PowerShell starter kit for standing up an Entra tenant with certificate-based automation.
+PowerShell 7 bootstrap and hardening toolkit for Microsoft Entra and Microsoft 365 lab or demo tenants. The repository is script-based, certificate-auth capable, and designed for controlled testing rather than blind production rollout.
 
-## What it does
+## Current Status
 
-- Connects to Microsoft Graph with a certificate
-- Creates baseline security groups
-- Creates administrative units
-- Creates an automation app registration with an embedded public certificate
-- Grants Microsoft Graph application permissions to that automation app
-- Exports tenant inventory for auditing and documentation
+- Baseline bootstrap flow is in place for app registration setup, Graph permission grants, core group creation, administrative unit creation, and inventory export.
+- Hardening flow is tier-aware and automatically skips premium-only features on `free` tenants.
+- Shared helper functions are centralized in `shared/EntraBootstrap.Common.ps1`.
+- Repository defaults are set up to avoid committing common sensitive or tenant-specific artifacts.
 
-## Layout
+## Safety Defaults
 
-- `Config/tenant.sample.json` is the file you fill in with your tenant details
-- `Shared/EntraBootstrap.Common.ps1` contains shared Graph helpers
-- `Scripts/00-Install-Prereqs.ps1` installs the required PowerShell modules
-- `Scripts/00-Create-AuthCert.ps1` creates a local self-signed auth certificate
-- `Scripts/Invoke-EntraBootstrap.ps1` runs the full workflow
-- `Scripts/06-Create-NamedLocations.ps1` creates trusted IP named locations
-- `Scripts/07-Create-ConditionalAccessPolicies.ps1` creates baseline Conditional Access policies
-- `Scripts/08-Validate-BreakGlass.ps1` validates break-glass membership
-- `Scripts/10-Configure-DirectoryRoles.ps1` assigns directory roles to groups/users
-- `Scripts/09-ExportRoleAssignments.ps1` exports directory role inventory
-- `Scripts/11-Review-PrivilegedGroups.ps1` prints privileged group memberships
-- `Scripts/12-Preflight-Check.ps1` validates the config before the main run
-- `Scripts/Invoke-EntraHardening.ps1` runs the hardening layer
+- Sample config values in `config/tenant.sample.json` are generic and safe to publish.
+- Real tenant settings should live in `config/tenant.json` or `config/*.local.json`.
+- Output exports, generated reports, and certificate artifacts should remain local.
+- Conditional Access policies default to `enabledForReportingButNotEnforced` when used.
+- Mutating scripts are written to be idempotent where practical and prefer warnings over silent failure.
 
-## Getting started
+## Known Limitations
 
-1. Copy `Config/tenant.sample.json` to your working config path.
-2. Fill in `tenantId`, `clientId`, and either `certificateThumbprint` or `certificatePath`.
-3. Set `licenseTier` to `free`, `p1`, or `p2` so the runner can skip unsupported features automatically.
-4. Put the public certificate for the automation app in `automationCertPath`.
-5. Run `Scripts/00-Install-Prereqs.ps1 -InstallMissing`.
-6. Run `Scripts/00-Create-AuthCert.ps1 -CertificateName "Contoso Entra Automation"`.
-7. Upload the generated `.cer` file into the app registration in Entra.
-8. Run `Scripts/Invoke-EntraBootstrap.ps1 -ConfigPath .\Config\tenant.sample.json`.
-9. After bootstrap, run `Scripts/Invoke-EntraHardening.ps1 -ConfigPath .\Config\tenant.sample.json`.
+- Conditional Access requires Microsoft Entra ID P1 or P2. On `licenseTier: free`, those steps are skipped.
+- Role-assignable groups also require a premium-capable tenant. On `licenseTier: free`, those steps are skipped.
+- The toolkit depends on Microsoft Graph permissions being granted and admin-consented ahead of some write operations.
+- Some scripts still need live tenant validation across different licensing tiers and permission combinations.
 
-## Notes
+## Recommended Run Order
 
-- The scripts assume Microsoft Graph application permissions will be consented by a suitably privileged admin.
-- The automation app creation step uses the public certificate file so you do not need to hand-edit the app registration afterward.
-- The inventory export writes JSON and CSV files into `Output`.
-- Conditional Access policies default to `enabledForReportingButNotEnforced` so you can review impact before enforcement.
-- Directory roles are assigned directly to users in the free-tier sample config.
-- Role-assignable groups and Conditional Access are skipped automatically when `licenseTier` is `free`.
-- Each hardening run writes `Output\hardening-summary.json` with the tier and the major workflow decisions.
-- The preflight step warns about missing users, groups, or break-glass accounts before making changes.
-- `Config/tenant.sample.json` is safe to publish; keep your real tenant settings in `Config/tenant.json` or `Config/*.local.json`, which are ignored by `.gitignore`.
-- `Output` and certificate artifacts are meant to stay local and should not be uploaded to GitHub.
+1. `pwsh ./scripts/00-Install-Prereqs.ps1 -InstallMissing`
+2. `pwsh ./scripts/00-Create-AuthCert.ps1 -CertificateName "Contoso Entra Automation"`
+3. Update `config/tenant.json` locally using `config/tenant.sample.json` as a template.
+4. `pwsh ./scripts/Invoke-EntraBootstrap.ps1 -ConfigPath ./config/tenant.json`
+5. `pwsh ./scripts/Invoke-EntraHardening.ps1 -ConfigPath ./config/tenant.json`
 
-## Suggested next additions
+## Folder Layout
 
-- Conditional Access policy creation
-- Named locations
-- Role-assignable groups
-- User onboarding and break-glass account checks
-- Exchange Online and Teams admin helpers
+- `config/` holds safe sample config plus ignored local tenant config files.
+- `shared/` contains common helper functions used by the scripts.
+- `scripts/` contains the operational bootstrap and hardening scripts.
+- `output/` is for local exports and generated summaries only.
+- `docs/` is reserved for future operator notes or diagrams.
+- `tests/` is reserved for future validation or Pester coverage.
+
+## Repo Safety
+
+- `.gitignore` is configured to ignore local configs, output folders, logs, CSV exports, and certificate or key artifacts.
+- Folder names are lowercase throughout this repository.
+- This toolkit should not be run blindly against production tenants.
+- Deprecated AzureAD and MSOnline modules are not used.
+
+## Resume / Portfolio Summary
+
+This project demonstrates a script-first Microsoft Entra bootstrap toolkit with certificate authentication, Microsoft Graph automation, licensing-aware hardening behavior, and repository safety controls suitable for public portfolio publication.

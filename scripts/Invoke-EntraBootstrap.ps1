@@ -1,5 +1,5 @@
 param(
-    [string]$ConfigPath = (Join-Path (Split-Path $PSScriptRoot -Parent) "Config\tenant.sample.json"),
+    [string]$ConfigPath = (Join-Path (Split-Path $PSScriptRoot -Parent) "config\tenant.sample.json"),
     [switch]$SkipPermissions
 )
 

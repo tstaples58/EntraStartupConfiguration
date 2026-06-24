@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($ExportFolder)) {
-    $ExportFolder = Join-Path (Split-Path $PSScriptRoot -Parent) "Output"
+    $ExportFolder = Join-Path (Split-Path $PSScriptRoot -Parent) "output"
 }
 else {
     $resolvedExport = Resolve-Path -LiteralPath $ExportFolder -ErrorAction SilentlyContinue

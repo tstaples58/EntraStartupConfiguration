@@ -8,7 +8,7 @@ param(
     )
 )
 
-. (Join-Path (Split-Path $PSScriptRoot -Parent) "Shared\EntraBootstrap.Common.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "shared\EntraBootstrap.Common.ps1")
 
 foreach ($moduleName in $Modules) {
     Ensure-Module -Name $moduleName -InstallMissing:$InstallMissing

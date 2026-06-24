@@ -1,0 +1,24 @@
+# Local tenant configs
+config/tenant.json
+config/*.local.json
+
+# Output and reports
+output/*
+!output/
+!output/.gitkeep
+*.log
+*.csv
+
+# Certificate and key artifacts
+*.pfx
+*.cer
+*.pem
+*.key
+
+# Editors and OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Allow safe sample config
+!config/tenant.sample.json

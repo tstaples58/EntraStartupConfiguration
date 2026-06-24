@@ -84,5 +84,5 @@
       "description": "Administrative unit for delegated admin testing and scoping"
     }
   ],
-  "reportOutputPath": ".\\Output"
+  "reportOutputPath": ".\\output"
 }

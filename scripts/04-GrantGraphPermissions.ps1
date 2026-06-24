@@ -1,8 +1,8 @@
 param(
-    [string]$ConfigPath = (Join-Path (Split-Path $PSScriptRoot -Parent) "Config\tenant.sample.json")
+    [string]$ConfigPath = (Join-Path (Split-Path $PSScriptRoot -Parent) "config\tenant.sample.json")
 )
 
-. (Join-Path (Split-Path $PSScriptRoot -Parent) "Shared\EntraBootstrap.Common.ps1")
+. (Join-Path (Split-Path $PSScriptRoot -Parent) "shared\EntraBootstrap.Common.ps1")
 Import-EntraPrereqs
 
 $config = Get-EntraBootstrapConfig -Path $ConfigPath
@@ -30,9 +30,10 @@ $sp = $spLookup.value[0]
 $graphFilter = [uri]::EscapeDataString("appId eq '00000003-0000-0000-c000-000000000000'")
 $graphSpLookup = Invoke-GraphRequestJson -Method GET -Uri "/v1.0/servicePrincipals?`$filter=$graphFilter"
 $graphSp = $graphSpLookup.value[0]
+$graphSpWithRoles = Invoke-GraphRequestJson -Method GET -Uri "/v1.0/servicePrincipals/$($graphSp.id)?`$select=id,appId,displayName,appRoles"
 
 $permissionMap = @{}
-foreach ($role in (Get-GraphCollectionAll -Uri "/v1.0/servicePrincipals/$($graphSp.id)/appRoles")) {
+foreach ($role in @($graphSpWithRoles.appRoles)) {
     $permissionMap[$role.value] = $role.id
 }
 
