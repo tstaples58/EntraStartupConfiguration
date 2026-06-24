@@ -24,18 +24,20 @@ This folder contains a PowerShell starter kit for standing up an Entra tenant wi
 - `Scripts/10-Configure-DirectoryRoles.ps1` assigns directory roles to groups/users
 - `Scripts/09-ExportRoleAssignments.ps1` exports directory role inventory
 - `Scripts/11-Review-PrivilegedGroups.ps1` prints privileged group memberships
+- `Scripts/12-Preflight-Check.ps1` validates the config before the main run
 - `Scripts/Invoke-EntraHardening.ps1` runs the hardening layer
 
 ## Getting started
 
 1. Copy `Config/tenant.sample.json` to your working config path.
 2. Fill in `tenantId`, `clientId`, and either `certificateThumbprint` or `certificatePath`.
-3. Put the public certificate for the automation app in `automationCertPath`.
-4. Run `Scripts/00-Install-Prereqs.ps1 -InstallMissing`.
-5. Run `Scripts/00-Create-AuthCert.ps1 -CertificateName "Contoso Entra Automation"`.
-6. Upload the generated `.cer` file into the app registration in Entra.
-7. Run `Scripts/Invoke-EntraBootstrap.ps1 -ConfigPath .\Config\tenant.sample.json`.
-8. After bootstrap, run `Scripts/Invoke-EntraHardening.ps1 -ConfigPath .\Config\tenant.sample.json`.
+3. Set `licenseTier` to `free`, `p1`, or `p2` so the runner can skip unsupported features automatically.
+4. Put the public certificate for the automation app in `automationCertPath`.
+5. Run `Scripts/00-Install-Prereqs.ps1 -InstallMissing`.
+6. Run `Scripts/00-Create-AuthCert.ps1 -CertificateName "Contoso Entra Automation"`.
+7. Upload the generated `.cer` file into the app registration in Entra.
+8. Run `Scripts/Invoke-EntraBootstrap.ps1 -ConfigPath .\Config\tenant.sample.json`.
+9. After bootstrap, run `Scripts/Invoke-EntraHardening.ps1 -ConfigPath .\Config\tenant.sample.json`.
 
 ## Notes
 
@@ -43,7 +45,12 @@ This folder contains a PowerShell starter kit for standing up an Entra tenant wi
 - The automation app creation step uses the public certificate file so you do not need to hand-edit the app registration afterward.
 - The inventory export writes JSON and CSV files into `Output`.
 - Conditional Access policies default to `enabledForReportingButNotEnforced` so you can review impact before enforcement.
-- Directory roles can be delegated to groups using `directoryRoleAssignments` in the config file.
+- Directory roles are assigned directly to users in the free-tier sample config.
+- Role-assignable groups and Conditional Access are skipped automatically when `licenseTier` is `free`.
+- Each hardening run writes `Output\hardening-summary.json` with the tier and the major workflow decisions.
+- The preflight step warns about missing users, groups, or break-glass accounts before making changes.
+- `Config/tenant.sample.json` is safe to publish; keep your real tenant settings in `Config/tenant.json` or `Config/*.local.json`, which are ignored by `.gitignore`.
+- `Output` and certificate artifacts are meant to stay local and should not be uploaded to GitHub.
 
 ## Suggested next additions
 
